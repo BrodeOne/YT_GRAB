@@ -110,6 +110,28 @@ fn find_binary(name: &str) -> String {
         }
     }
 
+    let exe_name = if cfg!(target_os = "windows") {
+        format!("{}.exe", name)
+    } else {
+        name.to_string()
+    };
+
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let bundled = exe_dir.join("binaries").join(&exe_name);
+            if bundled.exists() {
+                return bundled.to_string_lossy().to_string();
+            }
+
+            if let Some(grandparent) = exe_dir.parent() {
+                let resources = grandparent.join("Resources").join("binaries").join(&exe_name);
+                if resources.exists() {
+                    return resources.to_string_lossy().to_string();
+                }
+            }
+        }
+    }
+
     let search_paths = [
         "/opt/homebrew/bin",
         "/usr/local/bin",
