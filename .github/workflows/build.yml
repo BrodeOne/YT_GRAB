@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -13,8 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install frontend deps
         run: npm install
       - name: Download yt-dlp
@@ -22,12 +24,14 @@ jobs:
           mkdir -p src-tauri/binaries
           curl -sSfL -o src-tauri/binaries/yt-dlp.exe "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
       - name: Download ffmpeg
+        shell: pwsh
         run: |
-          curl -sSfL -o ffmpeg.zip "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
-          7z x ffmpeg.zip -offmpeg_extract
-          copy ffmpeg_extract\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe src-tauri\binaries\ffmpeg.exe
-          rmdir /s /q ffmpeg_extract
-          del ffmpeg.zip
+          $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          7z x ffmpeg.zip -offmpeg_extract -y
+          $extracted = Get-ChildItem -Path ffmpeg_extract -Directory | Select-Object -First 1
+          Copy-Item "$($extracted.FullName)\bin\ffmpeg.exe" src-tauri\binaries\ffmpeg.exe
+          Remove-Item -Recurse -Force ffmpeg_extract, ffmpeg.zip
       - name: Build
         run: npx tauri build
       - name: Upload MSI
@@ -35,11 +39,6 @@ jobs:
         with:
           name: YT-Grab-Windows
           path: src-tauri/target/release/bundle/msi/*.msi
-      - name: Upload NSIS
-        uses: actions/upload-artifact@v4
-        with:
-          name: YT-Grab-Windows-Setup
-          path: src-tauri/target/release/bundle/nsis/*.exe
 
   macos:
     runs-on: macos-latest
@@ -48,8 +47,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install frontend deps
         run: npm install
       - name: Download yt-dlp
@@ -59,9 +57,10 @@ jobs:
           chmod +x src-tauri/binaries/yt-dlp_macos
       - name: Download ffmpeg
         run: |
-          curl -sSfL -o ffmpeg.zip "https://evermeet.cx/ffmpeg/getrelease/zip"
+          curl -sSfL -o ffmpeg.zip "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-macos64-gpl.zip"
           unzip -o ffmpeg.zip -d ffmpeg_extract
-          mv ffmpeg_extract/ffmpeg src-tauri/binaries/ffmpeg
+          EXTRACTED=$(ls -d ffmpeg_extract/*/)
+          mv "$EXTRACTED/bin/ffmpeg" src-tauri/binaries/ffmpeg
           chmod +x src-tauri/binaries/ffmpeg
           rm -rf ffmpeg_extract ffmpeg.zip
       - name: Build
