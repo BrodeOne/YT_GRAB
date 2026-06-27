@@ -1,0 +1,7 @@
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
+rustflags = [
+  "-Lnative=/Users/monolith/.xwin/crt/lib/x86_64",
+  "-Lnative=/Users/monolith/.xwin/sdk/lib/um/x86_64",
+  "-Lnative=/Users/monolith/.xwin/sdk/lib/ucrt/x86_64",
+]
