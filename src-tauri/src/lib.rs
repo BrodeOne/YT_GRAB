@@ -7,6 +7,17 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::Mutex;
 
+fn silent_command(program: &str) -> Command {
+    #[allow(unused_mut)]
+    let mut std_cmd = std::process::Command::new(program);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        std_cmd.creation_flags(0x08000000);
+    }
+    Command::from(std_cmd)
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VideoMetadata {
     pub id: String,
@@ -180,7 +191,7 @@ fn find_binary(name: &str) -> String {
 async fn fetch_metadata(url: String) -> Result<VideoMetadata, String> {
     let yt_dlp = find_binary("yt-dlp");
 
-    let output = Command::new(&yt_dlp)
+    let output = silent_command(&yt_dlp)
         .args([
             "-J",
             "--no-playlist",
@@ -282,7 +293,7 @@ async fn start_download(
         url.clone(),
     ];
 
-    let mut child = Command::new(&yt_dlp)
+    let mut child = silent_command(&yt_dlp)
         .args(&args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -522,7 +533,7 @@ async fn resolve_filename(
     output_template: &str,
     url: &str,
 ) -> Option<String> {
-    let output = Command::new(yt_dlp)
+    let output = silent_command(yt_dlp)
         .args([
             "--get-filename",
             "-f",
