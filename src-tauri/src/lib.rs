@@ -122,11 +122,25 @@ fn find_binary(name: &str) -> String {
             if bundled.exists() {
                 return bundled.to_string_lossy().to_string();
             }
+            if name == "yt-dlp" {
+                let macos_name = format!("{}_macos", name);
+                let macos_bundled = exe_dir.join("binaries").join(&macos_name);
+                if macos_bundled.exists() {
+                    return macos_bundled.to_string_lossy().to_string();
+                }
+            }
 
             if let Some(grandparent) = exe_dir.parent() {
                 let resources = grandparent.join("Resources").join("binaries").join(&exe_name);
                 if resources.exists() {
                     return resources.to_string_lossy().to_string();
+                }
+                if name == "yt-dlp" {
+                    let macos_name = format!("{}_macos", name);
+                    let macos_resources = grandparent.join("Resources").join("binaries").join(&macos_name);
+                    if macos_resources.exists() {
+                        return macos_resources.to_string_lossy().to_string();
+                    }
                 }
             }
         }

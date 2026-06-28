@@ -34,12 +34,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "binaries/yt-dlp_macos": "binaries/yt-dlp",
-      "binaries/ffmpeg": "binaries/ffmpeg",
-      "binaries/yt-dlp.exe": "binaries/yt-dlp.exe",
-      "binaries/ffmpeg.exe": "binaries/ffmpeg.exe"
-    },
+    "resources": ["binaries/*"],
     "macOS": {
       "minimumSystemVersion": "11.0"
     }

@@ -96,7 +96,8 @@ jobs:
         run: |
           mkdir -p src-tauri/binaries
           curl --retry 3 -sSfL -o src-tauri/binaries/yt-dlp_macos "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
-          chmod +x src-tauri/binaries/yt-dlp_macos
+          cp src-tauri/binaries/yt-dlp_macos src-tauri/binaries/yt-dlp
+          chmod +x src-tauri/binaries/yt-dlp_macos src-tauri/binaries/yt-dlp
 
       - name: Download ffmpeg
         run: |
