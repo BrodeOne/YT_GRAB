@@ -25,3 +25,9 @@ dist-ssr
 
 # Bundled binaries (downloaded at build time)
 src-tauri/binaries/
+
+# Local dev tools
+.kilo/
+.xwin-cache/
+.xwin/
+binaries/
