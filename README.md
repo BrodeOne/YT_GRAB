@@ -19,6 +19,17 @@ Releases page: https://github.com/BrodeOne/YT_GRAB/releases
 - **Windows:** `YT Grab_x.x.x_x64.msi`
 - **macOS:** `YT Grab_x.x.x_aarch64.dmg`
 
+### macOS: First Launch
+
+The app is not code-signed. macOS Gatekeeper will block it on first launch.
+
+**Fix:** Right-click `YT Grab.app` → **Open** → click **Open** in the dialog.
+
+Alternatively, remove the quarantine flag:
+```bash
+xattr -d com.apple.quarantine "/Applications/YT Grab.app"
+```
+
 ## Development
 
 ```bash
