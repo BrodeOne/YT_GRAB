@@ -146,6 +146,9 @@ function App() {
       .then(setOutputDir)
       .catch(() => setOutputDir("~/Downloads"));
 
+    invoke<string>("check_binaries")
+      .catch((e) => setError(String(e)));
+
     const unlistenProgress = listen<ProgressPayload>(
       "download-progress",
       (event) => {

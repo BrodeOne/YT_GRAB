@@ -188,6 +188,33 @@ fn find_binary(name: &str) -> String {
 }
 
 #[tauri::command]
+fn check_binaries() -> Result<String, String> {
+    let yt = find_binary("yt-dlp");
+    let ff = find_binary("ffmpeg");
+    if yt.ends_with("yt-dlp") && !std::path::Path::new(&yt).exists() {
+        return Err(format!(
+            "yt-dlp not found. The app needs yt-dlp to download videos.\n\n\
+            Expected locations:\n\
+            - Bundled in the app (binaries/yt-dlp)\n\
+            - /opt/homebrew/bin/yt-dlp\n\
+            - /usr/local/bin/yt-dlp\n\n\
+            Install with: brew install yt-dlp"
+        ));
+    }
+    if ff.ends_with("ffmpeg") && !std::path::Path::new(&ff).exists() {
+        return Err(format!(
+            "ffmpeg not found. The app needs ffmpeg to merge video and audio.\n\n\
+            Expected locations:\n\
+            - Bundled in the app (binaries/ffmpeg)\n\
+            - /opt/homebrew/bin/ffmpeg\n\
+            - /usr/local/bin/ffmpeg\n\n\
+            Install with: brew install ffmpeg"
+        ));
+    }
+    Ok(format!("yt-dlp: {}\nffmpeg: {}", yt, ff))
+}
+
+#[tauri::command]
 async fn fetch_metadata(url: String) -> Result<VideoMetadata, String> {
     let yt_dlp = find_binary("yt-dlp");
 
@@ -596,6 +623,7 @@ pub fn run() {
             active_downloads: Arc::new(Mutex::new(HashMap::new())),
         })
         .invoke_handler(tauri::generate_handler![
+            check_binaries,
             fetch_metadata,
             start_download,
             cancel_download,
