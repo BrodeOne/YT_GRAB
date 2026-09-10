@@ -37,10 +37,8 @@ jobs:
             echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Download yt-dlp
-        run: |
-          mkdir -p src-tauri/binaries
-          curl --retry 3 -sSfL -o src-tauri/binaries/yt-dlp.exe "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+      - name: Download yt-dlp + Deno (pinned, checksum-verified)
+        run: bash scripts/fetch-binaries.sh
 
       - name: Download ffmpeg
         run: |
@@ -61,7 +59,7 @@ jobs:
           body: |
             ## YT Grab v${{ steps.ver.outputs.value }} — Windows
 
-            Standalone installer. No prerequisites — yt-dlp and ffmpeg bundled inside.
+            Standalone installer. No prerequisites — yt-dlp, ffmpeg, and Deno bundled inside.
 
             1. Download `.msi`
             2. Run the installer
@@ -92,13 +90,8 @@ jobs:
             echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Download yt-dlp
-        run: |
-          mkdir -p src-tauri/binaries
-          curl --retry 3 -sSfL -o src-tauri/binaries/yt-dlp_macos "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
-          if [ ! -s src-tauri/binaries/yt-dlp_macos ]; then echo "FAIL: yt-dlp_macos is empty"; exit 1; fi
-          cp src-tauri/binaries/yt-dlp_macos src-tauri/binaries/yt-dlp
-          chmod +x src-tauri/binaries/yt-dlp_macos src-tauri/binaries/yt-dlp
+      - name: Download yt-dlp + Deno (pinned, checksum-verified)
+        run: bash scripts/fetch-binaries.sh
 
       - name: Download ffmpeg
         run: |
@@ -125,6 +118,7 @@ jobs:
           [ -s src-tauri/binaries/yt-dlp_macos ] || exit 1
           [ -s src-tauri/binaries/yt-dlp ] || exit 1
           [ -s src-tauri/binaries/ffmpeg ] || exit 1
+          [ -s src-tauri/binaries/deno ] || exit 1
           echo "All binaries OK."
 
       - name: Build
@@ -138,7 +132,7 @@ jobs:
           body: |
             ## YT Grab v${{ steps.ver.outputs.value }} — macOS
 
-            Standalone installer. No prerequisites — yt-dlp and ffmpeg bundled inside.
+            Standalone installer. No prerequisites — yt-dlp, ffmpeg, and Deno bundled inside.
 
             1. Download `.dmg`
             2. Open and drag to Applications

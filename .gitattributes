@@ -1,0 +1,22 @@
+# Force LF line endings for shell scripts so they run correctly in
+# Git Bash on Windows CI runners and on macOS/Linux.
+*.sh text eol=lf
+*.ps1 text eol=lf
+
+# Rust / TOML / JSON / YAML: LF everywhere
+*.rs text eol=lf
+Cargo.toml text eol=lf
+Cargo.lock text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+
+# Binary build inputs must not be mangled by Git
+*.png binary
+*.ico binary
+*.icns binary
