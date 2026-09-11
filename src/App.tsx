@@ -16,6 +16,7 @@ import "./App.css";
 interface ComboEntry {
   resolution: string;
   resolutionSort: number;
+  height: number;
   videoId: string;
   audioId: string;
   combinedId: string;
@@ -27,6 +28,7 @@ interface ComboEntry {
   videoSize: number | null;
   audioSize: number | null;
   fps: number | null;
+  audioLanguage: string | null;
 }
 
 type TabMode = "combos" | "audio" | "video";
@@ -61,13 +63,63 @@ function resolutionSortKey(res: string): number {
   return parseInt(parts[0]) || 0;
 }
 
+function resolutionHeight(res: string): number {
+  if (res === "?") return 0;
+  const parts = res.split("x");
+  const h = parseInt(parts[1]);
+  return Number.isFinite(h) ? h : parseInt(parts[0]) || 0;
+}
+
+const ORIGINAL_LANG_KEY = "__original__";
+
+function audioLangKey(lang: string | null): string {
+  return lang && lang.trim() ? lang : ORIGINAL_LANG_KEY;
+}
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English", de: "German", fr: "French", es: "Spanish", it: "Italian",
+  pt: "Portuguese", ru: "Russian", ja: "Japanese", ko: "Korean", zh: "Chinese",
+  ar: "Arabic", hi: "Hindi", nl: "Dutch", pl: "Polish", tr: "Turkish",
+  sv: "Swedish", no: "Norwegian", da: "Danish", fi: "Finnish", cs: "Czech",
+  el: "Greek", he: "Hebrew", hu: "Hungarian", ro: "Romanian", th: "Thai",
+  vi: "Vietnamese", id: "Indonesian", uk: "Ukrainian", bn: "Bengali",
+  ta: "Tamil", te: "Telugu", ur: "Urdu", fa: "Persian",
+};
+
+function languageLabel(lang: string | null): string {
+  if (!lang) return "Original";
+  const name = LANGUAGE_NAMES[lang.toLowerCase()];
+  return name ? `${name} (${lang})` : lang.toUpperCase();
+}
+
+function audioLanguageOptions(formats: FormatInfo[]): { key: string; label: string }[] {
+  const keys: string[] = [];
+  for (const f of formats) {
+    if (!f.has_audio || f.has_video || f.format_id.includes("m3u8")) continue;
+    const key = audioLangKey(f.language);
+    if (!keys.includes(key)) keys.push(key);
+  }
+  return keys
+    .map((key) => ({
+      key,
+      label: key === ORIGINAL_LANG_KEY ? "Original" : languageLabel(key),
+    }))
+    .sort((a, b) => {
+      if (a.key === ORIGINAL_LANG_KEY) return 1;
+      if (b.key === ORIGINAL_LANG_KEY) return -1;
+      return a.label.localeCompare(b.label);
+    });
+}
+
 function formatLabelFromId(metadata: VideoMetadata, formatId: string): string {
   if (formatId.includes("+")) {
     const [vid, aud] = formatId.split("+");
     const vfmt = metadata.formats.find((f) => f.format_id === vid);
     const afmt = metadata.formats.find((f) => f.format_id === aud);
     const vlabel = vfmt?.resolution ?? vid;
-    const alabel = afmt?.format_note ?? aud;
+    const alabel = [afmt?.format_note, afmt?.language ? `(${afmt.language})` : ""]
+      .filter(Boolean)
+      .join(" ") || aud;
     return `${vlabel} + ${alabel}`;
   }
   const fmt = metadata.formats.find((f) => f.format_id === formatId);
@@ -76,12 +128,16 @@ function formatLabelFromId(metadata: VideoMetadata, formatId: string): string {
   return fmt.format_note || fmt.format_id;
 }
 
-function buildCombos(formats: FormatInfo[]): ComboEntry[] {
+function buildCombos(formats: FormatInfo[], audioLang: string): ComboEntry[] {
   const videoFormats = formats.filter(
     (f) => f.has_video && !f.has_audio && f.resolution !== "?" && !f.format_id.includes("m3u8")
   );
   const audioFormats = formats.filter(
-    (f) => f.has_audio && !f.has_video && !f.format_id.includes("m3u8")
+    (f) =>
+      f.has_audio &&
+      !f.has_video &&
+      !f.format_id.includes("m3u8") &&
+      audioLangKey(f.language) === audioLang
   );
 
   const audioByExt: Record<string, FormatInfo[]> = {};
@@ -108,6 +164,7 @@ function buildCombos(formats: FormatInfo[]): ComboEntry[] {
     comboMap.set(key, {
       resolution: v.resolution,
       resolutionSort: resolutionSortKey(v.resolution),
+      height: resolutionHeight(v.resolution),
       videoId: v.format_id,
       audioId: bestAudio.format_id,
       combinedId: `${v.format_id}+${bestAudio.format_id}`,
@@ -119,12 +176,27 @@ function buildCombos(formats: FormatInfo[]): ComboEntry[] {
       videoSize: v.filesize,
       audioSize: bestAudio.filesize,
       fps: v.fps,
+      audioLanguage: bestAudio.language ?? null,
     });
   }
 
   const combos = [...comboMap.values()];
   combos.sort((a, b) => b.resolutionSort - a.resolutionSort);
   return combos;
+}
+
+function pickRecommendedCombo(combos: ComboEntry[]): ComboEntry | null {
+  if (combos.length === 0) return null;
+  const fullHdMp4 = combos.find((c) => c.container === "mp4" && c.height === 1080);
+  if (fullHdMp4) return fullHdMp4;
+  const mp4Below1080 = combos
+    .filter((c) => c.container === "mp4" && c.height <= 1080)
+    .sort((a, b) => b.height - a.height)[0];
+  if (mp4Below1080) return mp4Below1080;
+  const bestBelow1080 = combos
+    .filter((c) => c.height <= 1080)
+    .sort((a, b) => b.height - a.height)[0];
+  return bestBelow1080 ?? combos[0];
 }
 
 function App() {
@@ -136,6 +208,7 @@ function App() {
   const [outputDir, setOutputDir] = useState<string>("");
   const [tabMode, setTabMode] = useState<TabMode>("combos");
   const [autoFetch, setAutoFetch] = useState(true);
+  const [audioLang, setAudioLang] = useState<string>(ORIGINAL_LANG_KEY);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const store = useDownloadStore();
@@ -291,7 +364,15 @@ function App() {
     (f) => f.has_audio && !f.has_video && !f.format_id.includes("m3u8")
   );
 
-  const combos = metadata ? buildCombos(metadata.formats) : [];
+  const languageOptions = metadata ? audioLanguageOptions(metadata.formats) : [];
+  const effectiveAudioLang = languageOptions.some((o) => o.key === audioLang)
+    ? audioLang
+    : languageOptions.find((o) => o.key === "en")?.key ??
+      languageOptions[0]?.key ??
+      ORIGINAL_LANG_KEY;
+
+  const combos = metadata ? buildCombos(metadata.formats, effectiveAudioLang) : [];
+  const recommendedCombo = pickRecommendedCombo(combos);
 
   return (
     <div className="app">
@@ -351,25 +432,27 @@ function App() {
             </div>
           )}
 
-          {metadata && combos.length > 0 && (() => {
-            const topMp4 = combos.find((c) => c.container === "mp4") ?? combos[0];
+          {metadata && recommendedCombo && (() => {
+            const rec = recommendedCombo;
             return (
               <div className="section quick-download">
                 <div className="quick-dl-row">
                   <div className="quick-dl-info">
-                    <span className="quick-dl-label">Best MP4</span>
-                    <span className="quick-dl-resolution">{topMp4.resolution}</span>
-                    <span className="quick-dl-codec">
-                      {topMp4.videoCodec} + {topMp4.audioCodec}
+                    <span className="quick-dl-label">Recommended</span>
+                    <span className="quick-dl-resolution">
+                      {rec.height === 1080 ? "Full HD 1080p" : rec.resolution}
                     </span>
-                    <span className="quick-dl-size">{totalSize(topMp4.videoSize, topMp4.audioSize)}</span>
+                    <span className="quick-dl-codec">
+                      {rec.videoCodec} + {rec.audioCodec} &middot; {languageLabel(rec.audioLanguage)}
+                    </span>
+                    <span className="quick-dl-size">{totalSize(rec.videoSize, rec.audioSize)}</span>
                   </div>
                   <button
-                    onClick={() => startDownload(topMp4.combinedId)}
+                    onClick={() => startDownload(rec.combinedId)}
                     disabled={!outputDir}
                     className="btn btn-primary quick-dl-btn"
                   >
-                    Download {topMp4.resolution} MP4
+                    Download {rec.height === 1080 ? "1080p" : rec.resolution} MP4
                   </button>
                 </div>
               </div>
@@ -404,6 +487,23 @@ function App() {
 
               {tabMode === "combos" && (
                 <>
+                  <div className="combo-lang-row">
+                    <label htmlFor="audio-lang" className="combo-lang-label">
+                      Audio language:
+                    </label>
+                    <select
+                      id="audio-lang"
+                      className="combo-lang-select"
+                      value={effectiveAudioLang}
+                      onChange={(e) => setAudioLang(e.target.value)}
+                    >
+                      {languageOptions.map((o) => (
+                        <option key={o.key} value={o.key}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="format-table-wrap">
                     <table className="format-table">
                       <thead>
@@ -411,6 +511,7 @@ function App() {
                           <th>Quality</th>
                           <th>Container</th>
                           <th>Video + Audio Codec</th>
+                          <th>Audio</th>
                           <th>Total Size</th>
                           <th>FPS</th>
                           <th></th>
@@ -426,7 +527,7 @@ function App() {
                             <td className="quality-cell">
                               <span className="quality-badge">{c.resolution}</span>
                               <span className="tag tag-green">A+V</span>
-                              {c.container === "mp4" && (
+                              {recommendedCombo?.combinedId === c.combinedId && (
                                 <span className="tag tag-recommend">Recommended</span>
                               )}
                             </td>
@@ -434,6 +535,7 @@ function App() {
                             <td className="mono">
                               {c.videoCodec} + {c.audioCodec}
                             </td>
+                            <td>{languageLabel(c.audioLanguage)}</td>
                             <td>{totalSize(c.videoSize, c.audioSize)}</td>
                             <td>{c.fps ? `${c.fps}` : "-"}</td>
                             <td>
@@ -450,7 +552,9 @@ function App() {
                     </table>
                   </div>
                   {combos.length === 0 && (
-                    <div className="empty-tab">No combos available for this video.</div>
+                    <div className="empty-tab">
+                      No combos available for this video{languageOptions.length > 0 ? " and language" : ""}.
+                    </div>
                   )}
                 </>
               )}
@@ -463,6 +567,7 @@ function App() {
                         <th>Quality</th>
                         <th>Codec</th>
                         <th>Container</th>
+                        <th>Language</th>
                         <th>Size</th>
                         <th></th>
                       </tr>
@@ -482,6 +587,7 @@ function App() {
                             </td>
                             <td className="mono">{shortCodec(f.acodec)}</td>
                             <td>{f.ext}</td>
+                            <td>{languageLabel(f.language)}</td>
                             <td>{formatSize(f.filesize)}</td>
                             <td>
                               <button

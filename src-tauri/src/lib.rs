@@ -64,6 +64,7 @@ pub struct FormatInfo {
     pub has_audio: bool,
     pub has_video: bool,
     pub format_note: String,
+    pub language: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -494,6 +495,7 @@ async fn fetch_metadata(url: String) -> Result<VideoMetadata, String> {
                 has_audio: acodec != "none",
                 has_video: vcodec != "none",
                 format_note,
+                language: f["language"].as_str().map(|s| s.to_string()),
             })
         })
         .collect();

@@ -10,6 +10,7 @@ export interface FormatInfo {
   has_audio: boolean;
   has_video: boolean;
   format_note: string;
+  language: string | null;
 }
 
 export interface VideoMetadata {
