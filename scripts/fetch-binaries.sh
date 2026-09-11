@@ -36,14 +36,26 @@ sha256_of() {
 verify_sha256() {
   local dir="$1" sums_file="$2" filename="$3"
   local expected
+  # Standard format: "<sha256>  <filename>"
   expected=$(grep -F " $filename" "$sums_file" | awk '{print $1}' | head -1)
+  if [ -z "$expected" ]; then
+    # Deno's Windows sidecar uses a CRLF report format with padded keys:
+    #   Algorithm : SHA256
+    #   Hash      : <UPPERCASE-SHA256>
+    #   Path      : ...
+    # Note: {m,n} intervals and [:space:] tr classes are GNU-only; use
+    # portable `+` and explicit escapes so this also works on BSD tools.
+    expected=$(grep -iE "^Hash[[:space:]]*:[[:space:]]*[0-9a-f]+" "$sums_file" | head -1 | awk -F: '{print $2}' | tr -d '\r\n\t ')
+  fi
   if [ -z "$expected" ]; then
     echo "FAIL: no checksum for $filename in $sums_file"
     exit 1
   fi
-  local actual
+  local actual exp_lower act_lower
   actual=$(sha256_of "$dir" "$filename")
-  if [ "$expected" != "$actual" ]; then
+  exp_lower=$(printf '%s' "$expected" | tr 'A-Z' 'a-z')
+  act_lower=$(printf '%s' "$actual" | tr 'A-Z' 'a-z')
+  if [ "$exp_lower" != "$act_lower" ]; then
     echo "FAIL: checksum mismatch for $filename"
     echo "  expected: $expected"
     echo "  actual:   $actual"
