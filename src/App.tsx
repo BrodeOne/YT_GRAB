@@ -283,17 +283,19 @@ function App() {
   useEffect(() => {
     const checkForUpdate = async () => {
       try {
-        const lastCheck = localStorage.getItem("ytgrab-last-update-check");
+        const lastCheck = localStorage.getItem("ytgrab-last-update-check-v2");
         if (lastCheck && Date.now() - parseInt(lastCheck, 10) < UPDATE_CHECK_INTERVAL_MS) {
           return;
         }
-        localStorage.setItem("ytgrab-last-update-check", String(Date.now()));
 
         const current = await getVersion();
         const res = await fetch(
           `https://api.github.com/repos/${UPDATE_REPO}/releases?per_page=20`
         );
         if (!res.ok) return;
+
+        localStorage.setItem("ytgrab-last-update-check-v2", String(Date.now()));
+
         const releases: { tag_name?: string; html_url?: string; name?: string }[] =
           await res.json();
 
