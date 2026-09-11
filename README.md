@@ -2,6 +2,8 @@
 
 YouTube video downloader for offline playback. Standalone installers for macOS and Windows — no prerequisites.
 
+> **Intended use:** personal and legitimate use only, such as downloading videos you own or have explicit permission to save, or content used for offline viewing where permitted by applicable law.
+
 ## Features
 
 - Paste a URL → auto-fetch metadata, thumbnails, and all available formats
@@ -29,6 +31,14 @@ Alternatively, remove the quarantine flag:
 ```bash
 xattr -d com.apple.quarantine "/Applications/YT Grab.app"
 ```
+
+## Updates
+
+On startup (at most once per day), the app checks GitHub Releases for a newer version and shows an in-app banner with a **Download** button that opens the release page.
+
+- Versions come from `version` in `src-tauri/tauri.conf.json`. The Release workflow stamps the version from the `v*` tag or the workflow input into the app before building.
+- The check uses the public GitHub API, so **the repository must be public** for update notifications to work. With a private repo the check silently does nothing.
+- Release flow: tag `v0.2.0` → both platform jobs build with version `0.2.0` → installed `0.1.0` apps show the banner on next launch.
 
 ## Tech Stack
 
@@ -107,3 +117,7 @@ npm run tauri build
 
 - **Build** (`build.yml`): CI on push to main — compiles and uploads artifacts
 - **Release** (`release.yml`): Trigger manually or via `v*` tag — creates per-platform GitHub Releases
+
+## Disclaimer
+
+YT Grab is provided for personal and legitimate use only, such as downloading videos you own or have explicit permission to save, or content used for offline viewing where permitted by applicable law. Users are responsible for complying with YouTube's Terms of Service and the copyright laws of their jurisdiction. The author is not responsible for any use of this software.

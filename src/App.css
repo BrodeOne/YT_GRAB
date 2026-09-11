@@ -410,6 +410,40 @@ body {
   border-color: var(--accent);
 }
 
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: white;
+  font-size: 13px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.update-banner-text {
+  font-weight: 500;
+}
+
+.update-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.update-banner .btn-primary {
+  background: white;
+  color: var(--accent);
+  border-color: white;
+}
+
+.update-banner .btn-outline {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
 .format-table {
   width: 100%;
   border-collapse: collapse;
@@ -544,10 +578,19 @@ body {
 }
 
 .download-bar {
-  margin-top: 12px;
+  margin-top: auto;
+  margin-left: -16px;
+  margin-right: -16px;
+  margin-bottom: -16px;
+  padding: 12px 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  z-index: 5;
 }
 
 .output-row {

@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import { getVersion } from "@tauri-apps/api/app";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useDownloadStore } from "./store/downloads";
 import type {
   VideoMetadata,
@@ -32,6 +34,26 @@ interface ComboEntry {
 }
 
 type TabMode = "combos" | "audio" | "video";
+
+const UPDATE_REPO = "BrodeOne/YT_GRAB";
+const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+interface UpdateInfo {
+  latest: string;
+  url: string;
+  name: string;
+}
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = b.split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    const da = pa[i] ?? 0;
+    const db = pb[i] ?? 0;
+    if (da !== db) return da - db;
+  }
+  return 0;
+}
 
 function formatSize(bytes: number | null): string {
   if (bytes === null || bytes === undefined) return "?";
@@ -209,6 +231,7 @@ function App() {
   const [tabMode, setTabMode] = useState<TabMode>("combos");
   const [autoFetch, setAutoFetch] = useState(true);
   const [audioLang, setAudioLang] = useState<string>(ORIGINAL_LANG_KEY);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const store = useDownloadStore();
@@ -255,6 +278,41 @@ function App() {
       unlistenComplete.then((fn) => fn());
       unlistenError.then((fn) => fn());
     };
+  }, []);
+
+  useEffect(() => {
+    const checkForUpdate = async () => {
+      try {
+        const lastCheck = localStorage.getItem("ytgrab-last-update-check");
+        if (lastCheck && Date.now() - parseInt(lastCheck, 10) < UPDATE_CHECK_INTERVAL_MS) {
+          return;
+        }
+        localStorage.setItem("ytgrab-last-update-check", String(Date.now()));
+
+        const current = await getVersion();
+        const res = await fetch(
+          `https://api.github.com/repos/${UPDATE_REPO}/releases?per_page=20`
+        );
+        if (!res.ok) return;
+        const releases: { tag_name?: string; html_url?: string; name?: string }[] =
+          await res.json();
+
+        let latest: { version: string; url: string; name: string } | null = null;
+        for (const rel of releases) {
+          const m = (rel.tag_name ?? "").match(/[vV]?(\d+\.\d+\.\d+)/);
+          if (!m) continue;
+          if (!latest || compareVersions(m[1], latest.version) > 0) {
+            latest = { version: m[1], url: rel.html_url ?? "", name: rel.name ?? rel.tag_name ?? "" };
+          }
+        }
+        if (latest && compareVersions(latest.version, current) > 0) {
+          setUpdateInfo({ latest: latest.version, url: latest.url, name: latest.name });
+        }
+      } catch {
+        // offline or repo not public — fail silently
+      }
+    };
+    checkForUpdate();
   }, []);
 
   const fetchMetadata = useCallback(async () => {
@@ -380,6 +438,25 @@ function App() {
         <h1>YT Grab</h1>
         <span className="subtitle">YouTube Video Downloader</span>
       </header>
+
+      {updateInfo && (
+        <div className="update-banner">
+          <span className="update-banner-text">
+            New version <strong>v{updateInfo.latest}</strong> is available
+          </span>
+          <div className="update-banner-actions">
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => openUrl(updateInfo.url || `https://github.com/${UPDATE_REPO}/releases`)}
+            >
+              Download
+            </button>
+            <button className="btn btn-sm btn-outline" onClick={() => setUpdateInfo(null)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="main-layout">
         <div className="panel panel-left">
@@ -655,28 +732,30 @@ function App() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
 
-              <div className="download-bar">
-                <div className="output-row">
-                  <input
-                    type="text"
-                    value={outputDir}
-                    onChange={(e) => setOutputDir(e.target.value)}
-                    className="path-input"
-                    placeholder="Output directory..."
-                  />
-                  <button onClick={selectOutputDir} className="btn btn-outline btn-sm">
-                    Browse
-                  </button>
-                </div>
-                <button
-                  onClick={() => startDownload()}
-                  disabled={!selectedFormat}
-                  className="btn btn-primary btn-lg"
-                >
-                  Download{selectedFormat ? ` (${formatLabelFromId(metadata, selectedFormat)})` : ""}
+          {metadata && metadata.formats.length > 0 && (
+            <div className="download-bar">
+              <div className="output-row">
+                <input
+                  type="text"
+                  value={outputDir}
+                  onChange={(e) => setOutputDir(e.target.value)}
+                  className="path-input"
+                  placeholder="Output directory..."
+                />
+                <button onClick={selectOutputDir} className="btn btn-outline btn-sm">
+                  Browse
                 </button>
               </div>
+              <button
+                onClick={() => startDownload()}
+                disabled={!selectedFormat}
+                className="btn btn-primary btn-lg"
+              >
+                Download{selectedFormat ? ` (${formatLabelFromId(metadata, selectedFormat)})` : ""}
+              </button>
             </div>
           )}
         </div>

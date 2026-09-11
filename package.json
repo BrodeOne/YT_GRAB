@@ -2,6 +2,7 @@
   "name": "yt-grab",
   "private": true,
   "version": "0.1.0",
+  "description": "YouTube downloader for personal/offline use of content you have permission to save. Use at your own responsibility.",
   "type": "module",
   "scripts": {
     "dev": "vite",

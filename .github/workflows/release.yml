@@ -37,6 +37,22 @@ jobs:
             echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Stamp version into app metadata
+        run: |
+          node -e "
+            const fs = require('fs');
+            const v = '${{ steps.ver.outputs.value }}';
+            const tf = 'src-tauri/tauri.conf.json';
+            const t = JSON.parse(fs.readFileSync(tf, 'utf8'));
+            t.version = v;
+            fs.writeFileSync(tf, JSON.stringify(t, null, 2) + '\n');
+            const pf = 'package.json';
+            const p = JSON.parse(fs.readFileSync(pf, 'utf8'));
+            p.version = v;
+            fs.writeFileSync(pf, JSON.stringify(p, null, 2) + '\n');
+            console.log('Version stamped:', v);
+          "
+
       - name: Download yt-dlp, ffmpeg, Deno (pinned, checksum-verified)
         run: bash scripts/fetch-binaries.sh
 
@@ -56,6 +72,8 @@ jobs:
             1. Download `.msi`
             2. Run the installer
             3. Launch from Start Menu
+
+            > For personal/offline use of content you have permission to save. Use at your own responsibility.
           files: src-tauri/target/release/bundle/msi/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,6 +99,22 @@ jobs:
           else
             echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Stamp version into app metadata
+        run: |
+          node -e "
+            const fs = require('fs');
+            const v = '${{ steps.ver.outputs.value }}';
+            const tf = 'src-tauri/tauri.conf.json';
+            const t = JSON.parse(fs.readFileSync(tf, 'utf8'));
+            t.version = v;
+            fs.writeFileSync(tf, JSON.stringify(t, null, 2) + '\n');
+            const pf = 'package.json';
+            const p = JSON.parse(fs.readFileSync(pf, 'utf8'));
+            p.version = v;
+            fs.writeFileSync(pf, JSON.stringify(p, null, 2) + '\n');
+            console.log('Version stamped:', v);
+          "
 
       - name: Download yt-dlp, ffmpeg, Deno (pinned, checksum-verified)
         run: bash scripts/fetch-binaries.sh
@@ -109,6 +143,8 @@ jobs:
 
             1. Download `.dmg`
             2. Open and drag to Applications
+
+            > For personal/offline use of content you have permission to save. Use at your own responsibility.
           files: src-tauri/target/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
